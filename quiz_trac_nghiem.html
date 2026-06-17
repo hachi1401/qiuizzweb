@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Trắc Nghiệm Nhập Môn Web</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
+  .option, .btn, .back-btn, .exam-card, .btn-restart, .btn-home { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+  /* HOME */
+  #home { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 30px; }
+  #home h1 { font-size: 2rem; color: #f0c040; text-align: center; margin-bottom: 10px; }
+  #home p { color: #aaa; margin-bottom: 40px; text-align: center; }
+  .exam-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; width: 100%; max-width: 900px; }
+  .exam-card { background: #16213e; border: 2px solid #0f3460; border-radius: 16px; padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.3s; }
+  .exam-card:hover { border-color: #f0c040; transform: translateY(-4px); box-shadow: 0 8px 24px rgba(240,192,64,0.2); }
+  .exam-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .exam-card h2 { color: #f0c040; font-size: 1.2rem; margin-bottom: 6px; }
+  .exam-card span { color: #aaa; font-size: 0.9rem; }
+
+  /* QUIZ */
+  #quiz { display: none; max-width: 820px; margin: 0 auto; padding: 24px 16px; }
+  .quiz-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .back-btn { background: #16213e; border: 1px solid #0f3460; color: #aaa; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+  .back-btn:hover { color: #f0c040; border-color: #f0c040; }
+  .quiz-title { color: #f0c040; font-size: 1.3rem; font-weight: bold; }
+  .quiz-meta { margin-left: auto; color: #aaa; font-size: 0.9rem; }
+
+  .progress-bar { height: 6px; background: #0f3460; border-radius: 99px; margin-bottom: 28px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #f0c040, #e07b00); border-radius: 99px; transition: width 0.4s; }
+
+  .question-card { background: #16213e; border-radius: 16px; padding: 28px; border: 1px solid #0f3460; margin-bottom: 24px; }
+  .question-num { font-size: 0.8rem; color: #888; margin-bottom: 8px; }
+  .question-text { font-size: 1.05rem; line-height: 1.6; margin-bottom: 22px; color: #e8e8e8; }
+  .question-text code { background: #0d1b2a; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #7dd3fc; }
+
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-radius: 10px; cursor: pointer; border: 2px solid #0f3460; background: #0d1b2a; transition: all 0.2s; }
+  .option:hover:not(.disabled) { border-color: #4a9eff; background: #132034; }
+  .option .opt-label { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; border: 2px solid #4a9eff; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; color: #4a9eff; flex-shrink: 0; margin-top: 1px; }
+  .option .opt-text { flex: 1; line-height: 1.5; font-size: 0.95rem; }
+  .option.selected { border-color: #4a9eff; background: #0e2a44; }
+  .option.correct { border-color: #22c55e !important; background: #052e16 !important; }
+  .option.correct .opt-label { border-color: #22c55e; color: #22c55e; }
+  .option.correct .opt-text { color: #f0c040 !important; font-weight: bold !important; }
+  .option.wrong { border-color: #ef4444 !important; background: #2d0a0a !important; }
+  .option.wrong .opt-label { border-color: #ef4444; color: #ef4444; }
+  .option.disabled { cursor: default; }
+  .option.hint-correct { border-color: #f0c040 !important; background: #2a1f00 !important; }
+  .option.hint-correct .opt-label { border-color: #f0c040; color: #f0c040; }
+  .option.hint-correct .opt-text { color: #f0c040 !important; font-weight: bold !important; }
+
+  .card-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .btn { padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; }
+  .btn-hint { background: #1e293b; color: #f0c040; border: 2px solid #f0c040; }
+  .btn-hint:hover { background: #2a1f00; }
+  .btn-next { background: #f0c040; color: #1a1a2e; margin-left: auto; }
+  .btn-next:hover { background: #ffd966; }
+  .btn-next:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* RESULT */
+  #result { display: none; max-width: 700px; margin: 0 auto; padding: 40px 16px; text-align: center; }
+  .result-circle { width: 150px; height: 150px; border-radius: 50%; border: 6px solid #f0c040; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 30px; }
+  .result-score { font-size: 2.8rem; font-weight: bold; color: #f0c040; }
+  .result-label { font-size: 0.9rem; color: #aaa; }
+  .result-title { font-size: 1.5rem; color: #f0c040; margin-bottom: 8px; }
+  .result-sub { color: #888; margin-bottom: 32px; }
+  .result-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+  .stat-box { background: #16213e; border-radius: 12px; padding: 16px; border: 1px solid #0f3460; }
+  .stat-box .num { font-size: 1.6rem; font-weight: bold; color: #f0c040; }
+  .stat-box .lbl { font-size: 0.8rem; color: #888; }
+  .result-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn-restart { background: #f0c040; color: #1a1a2e; padding: 12px 28px; border-radius: 12px; border: none; cursor: pointer; font-size: 1rem; font-weight: bold; }
+  .btn-restart:hover { background: #ffd966; }
+  .btn-home { background: #16213e; color: #f0c040; padding: 12px 28px; border-radius: 12px; border: 2px solid #f0c040; cursor: pointer; font-size: 1rem; font-weight: bold; }
+  .btn-home:hover { background: #2a1f00; }
+
+  .feedback { margin-top: 12px; font-size: 0.9rem; padding: 8px 12px; border-radius: 8px; }
+  .feedback.correct-msg { background: #052e16; color: #4ade80; border: 1px solid #22c55e; }
+  .feedback.wrong-msg { background: #2d0a0a; color: #f87171; border: 1px solid #ef4444; }
+
+  /* ===== MOBILE (≤600px) ===== */
+  @media (max-width: 600px) {
+    #home { padding: 24px 16px; }
+    #home h1 { font-size: 1.6rem; }
+    #home p { margin-bottom: 28px; font-size: 0.9rem; }
+    .exam-grid { grid-template-columns: 1fr; gap: 14px; }
+    .exam-card { padding: 22px 18px; }
+
+    #quiz { padding: 16px 12px; }
+    .quiz-header { gap: 8px; }
+    .back-btn { padding: 10px 14px; font-size: 0.85rem; }
+    .quiz-title { font-size: 1.05rem; }
+    .quiz-meta { width: 100%; margin-left: 0; text-align: right; font-size: 0.85rem; }
+
+    .question-card { padding: 18px 16px; border-radius: 12px; }
+    .question-text { font-size: 0.95rem; margin-bottom: 18px; }
+    .option { padding: 13px 14px; min-height: 44px; }
+    .option .opt-text { font-size: 0.9rem; }
+    .opt-label { width: 26px; height: 26px; min-width: 26px; }
+
+    /* Nút xếp full-width theo cột, nút "Câu tiếp" lên trên cho dễ bấm 1 tay */
+    .card-actions { flex-direction: column-reverse; }
+    .card-actions .btn { width: 100%; margin-left: 0 !important; padding: 13px 16px; min-height: 46px; }
+
+    .result-circle { width: 120px; height: 120px; border-width: 5px; margin-bottom: 22px; }
+    .result-score { font-size: 2.2rem; }
+    .result-stats { gap: 10px; margin-bottom: 28px; }
+    .result-actions { flex-direction: column-reverse; }
+    .result-actions button { width: 100%; min-height: 46px; }
+  }
+
+  /* ===== MÀN HÌNH RẤT NHỎ (≤380px) ===== */
+  @media (max-width: 380px) {
+    #home h1 { font-size: 1.35rem; }
+    .question-text { font-size: 0.88rem; }
+    .option .opt-text { font-size: 0.85rem; }
+    .result-stats { grid-template-columns: 1fr 1fr; }
+    .stat-box:nth-child(3) { grid-column: span 2; }
+  }
+
+  /* Vô hiệu hover trên thiết bị cảm ứng, dùng :active để phản hồi rõ khi chạm */
+  @media (hover: none) {
+    .exam-card:hover, .option:hover:not(.disabled), .back-btn:hover,
+    .btn-hint:hover, .btn-next:hover, .btn-restart:hover, .btn-home:hover { transform: none; }
+    .exam-card:active { border-color: #f0c040; transform: scale(0.98); }
+    .option:active:not(.disabled) { border-color: #4a9eff; background: #132034; }
+    .btn:active, .btn-restart:active, .btn-home:active { filter: brightness(0.92); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home">
+  <h1>📚 Quiz Trắc Nghiệm</h1>
+  <p>Nhập Môn Web Và Ứng Dụng — Chọn đề để bắt đầu</p>
+  <div class="exam-grid" id="examGrid"></div>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz">
+  <div class="quiz-header">
+    <button class="back-btn" onclick="goHome()">← Về trang chủ</button>
+    <span class="quiz-title" id="quizTitle"></span>
+    <span class="quiz-meta" id="quizMeta"></span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div id="questionContainer"></div>
+</div>
+
+<!-- RESULT -->
+<div id="result">
+  <div class="result-circle">
+    <span class="result-score" id="resScore"></span>
+    <span class="result-label">điểm</span>
+  </div>
+  <div class="result-title" id="resTitle"></div>
+  <div class="result-sub" id="resSub"></div>
+  <div class="result-stats">
+    <div class="stat-box"><div class="num" id="resCorrect" style="color:#22c55e"></div><div class="lbl">Đúng</div></div>
+    <div class="stat-box"><div class="num" id="resWrong" style="color:#ef4444"></div><div class="lbl">Sai</div></div>
+    <div class="stat-box"><div class="num" id="resTotal"></div><div class="lbl">Tổng câu</div></div>
+  </div>
+  <div class="result-actions">
+    <button class="btn-home" onclick="goHome()">🏠 Trang chủ</button>
+    <button class="btn-restart" id="restartBtn" onclick="restart()">🔄 Chơi lại</button>
+  </div>
+</div>
+
+<script>
+const EXAMS = [
+  {
+    title: "Đề 1",
+    year: "2020-2021",
+    icon: "📝",
+    questions: [
+      { q: "Đoạn mã <code>ab&lt;c&gt;d&lt;/c&gt;</code> xuất ra trên trình duyệt là gì?", opts: ["ab<c>d</c>", "abd", "abcd", "Lỗi"], ans: 1 },
+      { q: "Đoạn mã <code>X&lt;sup&gt;2&lt;/sup&gt;</code> xuất ra trình duyệt là gì?", opts: ["X₂", "X2", "X²", "X<sup>2</sup>"], ans: 2 },
+      { q: "Trong <code>&lt;table&gt;</code> thuộc tính màu nền là?", opts: ["background", "bordercolor", "bgcolor", "background-color"], ans: 2 },
+      { q: "Để mở liên kết trong một cửa sổ mới sử dụng thuộc tính?", opts: ['target="_top"', 'target="_self"', 'target="_blank"', 'target="_parent"'], ans: 2 },
+      { q: "Tag nào dùng để tạo tiêu đề kích thước nhỏ nhất?", opts: ["<h1>", "<h6>", "<heading>", "<header>"], ans: 1 },
+      { q: "Thuộc tính nào xác định tốc độ chuyển động của <code>&lt;marquee&gt;</code>?", opts: ["scrollamount", "behavior", "direction", "loop"], ans: 0 },
+      { q: "Trong textfield <code>&lt;input type=\"text\"/&gt;</code> thuộc tính nào giới hạn số ký tự nhập vào?", opts: ["size", "maxlength", "width", "value"], ans: 1 },
+      { q: "Thuộc tính nào dùng để tạo gợi ý nhập liệu cho 1 text field?", opts: ["recommend", "hint", "placeholder", 'hint="Nhập số"'], ans: 2 },
+      { q: 'Thêm thuộc tính nào vào <code>&lt;input type="text"&gt;</code> để không cho người dùng thay đổi giá trị nhưng vẫn gửi dữ liệu lên server?', opts: ['enable="false"', "readonly", "locked", 'change-value="no"'], ans: 1 },
+      { q: 'Thẻ nào dùng để tạo liên kết trong trang1.html đến vị trí pos1 trong trang2.html (cùng thư mục)?', opts: ['<a href="pos1&trang2.html"></a>', '<a href="trang2.html&pos1"></a>', '<a href="trang2.html#pos1"></a>', '<a href="trang2.html@pos1"></a>'], ans: 2 },
+      { q: "Trong CSS, thuộc tính nào dùng để định dạng màu chữ?", opts: ["font-color", "font color", "color", "text-color"], ans: 2 },
+      { q: "Thuộc tính nào trong CSS dùng để định dạng chữ nghiêng?", opts: ["text-decoration", "text-transform", "italic", "font-style"], ans: 3 },
+      { q: "Thuộc tính nào trong CSS định dạng kiểu border phía top của element?", opts: ["border-style", "border-top-type", "border-top-family", "border-top-style"], ans: 3 },
+      { q: "Nếu viết <code>padding: 20px 50px 10px 30px</code> thì padding-bottom là bao nhiêu?", opts: ["10px", "50px", "20px", "30px"], ans: 0 },
+      { q: 'CSS selector <code>ul > li[class="a"] { }</code> mang ý nghĩa gì?', opts: ["selector các thẻ li con gián tiếp của ul và có class là a", "selector các thẻ li đồng cấp của ul và có class là a", "selector các thẻ li theo sau của ul và có class là a", "selector các thẻ li con trực tiếp của ul và có class là a"], ans: 3 },
+      { q: "Khi sử dụng <code>display: flex</code>, thuộc tính nào xác định chiều của các item con trực tiếp?", opts: ["flex-t", "flex-grow", "flex-direction", "auto"], ans: 2 },
+      { q: "Để định dạng màu nền cho các ô thuộc dòng đầu tiên của table có id là tbl1, mã CSS nào đúng?", opts: ["table tr {background-color:#F00;}", "#tbl1 tr1 {background-color:#F00;}", "#tbl1 tr:first {background-color:#F00;}", "#tbl1 tr:first-child {background-color:#F00;}"], ans: 3 },
+      { q: "Chọn khai báo quan hệ Descendant Selector giữa div và p?", opts: ["div ~ p", "div p", "div * p", "div + p"], ans: 1 },
+      { q: "Giá trị nào của thuộc tính position cố định so với cửa sổ và không thay đổi khi scroll?", opts: ["Absolute", "Fixed", "Relative", "Static"], ans: 1 },
+      { q: "pseudo-class CSS đại diện cho phần tử cuối cùng trong nhóm các phần tử đồng cấp?", opts: [":end-child", ":last-element", ":last-child", ":Cả 2,b,c đều sai"], ans: 2 },
+      { q: 'Để kiểm tra nếu biến "i" không bằng 5, câu lệnh nào là đúng?', opts: ["if (i != 5)", "if (i <> 5)", "if I <> 5", "if i !=5 then"], ans: 0 },
+      { q: "Hàm <code>alert(...)</code> trong JavaScript dùng để làm gì?", opts: ["Hiển thị một thông báo Yes, No", "Hiển thị thông báo yêu cầu nhập thông tin", "Hiển thị một thông báo", "Không phương án nào đúng"], ans: 2 },
+      { q: "Đâu là kết quả của phép tính <code>2+6+'3'</code>?", opts: ["83", "'83'", "11", "'11'"], ans: 1 },
+      { q: "Trong JavaScript biểu thức <code>x === y</code> có nghĩa là:", opts: ["Cả x và y đều bằng nhau về giá trị, kiểu và địa chỉ tham chiếu.", "Cả hai chỉ bằng nhau về giá trị.", "Cả hai đều bằng nhau về giá trị và kiểu dữ liệu.", "Cả hai đều không giống nhau chút nào."], ans: 2 },
+      { q: "Trong JavaScript sự kiện Onblur thực hiện khi nào?", opts: ["Khi di chuyển con chuột qua form", "Khi một đối tượng trong form mất focus", "Khi một đối tượng trong form nhận focus", "Khi di chuyển con chuột vào nút lệnh"], ans: 1 },
+      { q: 'Hàm nào trong JavaScript được sử dụng để chọn tất cả các đối tượng có class="selector"?', opts: ["querySelectorAll()", "querySelector()", "getElementByClass()", "Cả a,b,c đều sai"], ans: 0 },
+      { q: "Cách khai báo mảng nào trong JavaScript là đúng?", opts: ['var colors = 1:("red"), 2:("green"), 3 = ("blue")', 'var colors = (1:"red", 2:"green", 3:"blue")', 'var colors = ["red", "green", "blue"]', 'var colors = "red", "green", "blue"'], ans: 2 },
+      { q: "Để truy cập, lấy giá trị phần tử trong form có id=n ra biến x, mã JavaScript là:", opts: ["x = document.getElementById(n);", "x = document.getElementById('n').value;", "x = document.frm.n.value();", "x = document.frm.n.value;"], ans: 1 },
+      { q: "Cho mảng <code>arr = ['aa','bb','cc','dd'];</code> để xóa 'aa', 'bb' và 'cc', mã JavaScript là:", opts: ["arr.splice(0,1);", "arr.splice(0,2);", "arr.splice(1,3);", "arr.splice(1,2);", "arr.splice(0,3);"], ans: 4 },
+      { q: "Để ẩn phần tử có id=txt, mã JavaScript là:", opts: ["document.getElementById('txt').display = 'none';", "document.getElementById('txt').style.display = 'none';", "document.getElementById('txt').css.display = 'none';", "document.getElementById('txt').style.display = 'hide';"], ans: 1 },
+      { q: "Để đổi kích thước chữ của phần tử có id=txt thành 60px, mã JavaScript là:", opts: ["document.getElementById('txt').style.fontSize = '60px';", "document.getElementById('txt').css.fontSize = '60px';", "document.getElementById('txt').style.Size = '60px';", "document.getElementById('txt').fontSize = '60px';"], ans: 0 },
+      { q: "Để xóa phần tử thứ 1 có class là class1 bằng jQuery:", opts: ["$('#class1')[0].remove();", "$('.class1')[0].remove();", "$('#class1')[1].remove();", "$('.class1')[1].remove();"], ans: 1 },
+      { q: "Tìm phần tử thứ 2 &lt;p&gt; và thay đổi giá trị thành \"Hello\", mã JavaScript:", opts: ["document.getElementsByName('p')[0].innerHTML = 'Hello';", "document.getElementsByName('p')[1].innerHTML = 'Hello';", "document.getElementsByTagName('p')[1].innerText = 'Hello';", "document.getElementsByTagName('p')[1].innerHTML = 'Hello';"], ans: 3 },
+      { q: "Để đổi màu chữ của phần tử có name='n' thành 'red', mã JavaScript là:", opts: ["document.getElementsByName('n').color='red';", "document.getElementsByName('n').add.color='red';", "document.getElementsByName('n').css.color='red';", "document.getElementsByName('n').style.color='red';"], ans: 3 },
+      { q: "Để lấy giá trị tên thuộc tính đầu tiên của phần tử Button thứ 1 ra biến a, mã JavaScript là:", opts: ['a = document.getElementsByName("BUTTON")[0].attributes[0].name;', 'a = document.getElementsByName("BUTTON")[0].attributes[1].name;', 'a = document.getElementsByTagName("BUTTON")[0].attributes[0].name;', 'a = document.getElementsByTagName("BUTTON")[1].attributes[0].name;'], ans: 2 }
+    ]
+  },
+  {
+    title: "Đề 2",
+    year: "2020-2021",
+    icon: "📋",
+    questions: [
+      { q: "Đoạn mã <code>&lt;pre&gt; 1 - 10 &lt;/pre&gt;</code> xuất ra trình duyệt là gì?", opts: ["1-10", "1 - 10", "1 10", "1-10"], ans: 1 },
+      { q: "Tag nào dùng để tạo tiêu đề kích lớn nhất?", opts: ["<heading>", "<header>", "<h1>", "<h6>"], ans: 2 },
+      { q: "Để đánh dấu bookmark (liên kết trong) ta sử dụng cách nào?", opts: ['<a name="tên_bookmark">...</a>', '<p id="tên_bookmark">...</p>', '<a name="#tên_bookmark">...</a>', "Cả a và b"], ans: 3 },
+      { q: "Để mở liên kết trong một cửa sổ mới sử dụng thuộc tính?", opts: ['target="_top"', 'target="_blank"', 'target="_self"', 'target="_parent"'], ans: 1 },
+      { q: "Thuộc tính nào xác định tốc độ chuyển động của <code>&lt;marquee&gt;</code>?", opts: ["scrollamount", "behavior", "direction", "loop"], ans: 0 },
+      { q: "Trong <code>&lt;table&gt;</code> sử dụng thẻ <code>&lt;th&gt;</code> nội dung sẽ tự động?", opts: ["Căn đều 2 bên", "Căn phải", "Căn giữa ô", "Tất cả đều sai"], ans: 2 },
+      { q: "Trong <code>&lt;table&gt;</code> canh chỉnh nội dung các ô theo chiều dọc là?", opts: ["align", "valign", "halign", "text-align"], ans: 1 },
+      { q: "Trong <code>&lt;table&gt;</code> để nối (trộn) các ô theo chiều ngang dùng thuộc tính?", opts: ["colpan", "colspan", "rowpan", "rowspan"], ans: 1 },
+      { q: 'Thêm gì vào <code>&lt;input type="text" /&gt;</code> để có được gợi ý "Nhập số"?', opts: ['value="Nhập số"', 'comment="Nhập số"', 'hint="Nhập số"', 'placeholder="Nhập số"'], ans: 3 },
+      { q: 'Trong thẻ <code>&lt;input type="text" /&gt;</code> thuộc tính nào giới hạn số ký tự nhập vào?', opts: ["size", "width", "maxlength", "value"], ans: 2 },
+      { q: "Cú pháp CSS nào được sử dụng để chuyển tất cả các thẻ &lt;p&gt; thành chữ in đậm?", opts: ["p {text-size:bold}", "p {font-weight:bold}", "style:bold", "p {font:bold}"], ans: 1 },
+      { q: "Thuộc tính nào của CSS không cho hình nền lặp lại?", opts: ["background-repeat: no-repeat", "image-repeat", "background-norepeat", "bgimage-repeat"], ans: 0 },
+      { q: "Lựa chọn thiết lập ảnh nền cố định?", opts: ["background-attachment: fix", "background-attachment: fixed", "background-attachment: scroll", "Tất cả đều sai"], ans: 1 },
+      { q: 'CSS selector <code>ul > li[class="a"] { }</code> mang ý nghĩa gì?', opts: ["selector các thẻ li con gián tiếp của ul và có class là a", "selector các thẻ li con trực tiếp của ul và có class là a", "selector các thẻ li đồng cấp của ul và có class là a", "selector các thẻ li theo sau của ul và có class là a"], ans: 1 },
+      { q: "Thuộc tính và giá trị CSS nào dùng để chuyển tất cả các ký tự đầu chữ viết hoa?", opts: ["text-transform: uppercase", "text-transform: capitalize", "text-transform: proper", "Không thể làm được với CSS"], ans: 1 },
+      { q: "Khi sử dụng <code>display: flex</code>, thuộc tính nào xác định chiều của các item trực tiếp?", opts: ["flex-direction", "flex-grow", "flex-t", "auto"], ans: 0 },
+      { q: "Để định dạng màu nền cho các ô thuộc dòng đầu tiên của table có id là tbl1, mã CSS nào đúng?", opts: ["table tr {background-color:#F00;}", "#tbl1 tr:1 {background-color:#F00;}", "#tbl1 tr:first {background-color:#F00;}", "#tbl1 tr:first-child {background-color:#F00;}"], ans: 3 },
+      { q: "Nếu viết <code>padding: 20px 50px 10px 30px</code> thì padding-left là bao nhiêu?", opts: ["10px", "50px", "20px", "30px"], ans: 3 },
+      { q: "Giá trị nào của thuộc tính position cố định so với cửa sổ và không thay đổi khi scroll?", opts: ["Absolute", "Fixed", "Relative", "Static"], ans: 1 },
+      { q: "Chọn khai báo quan hệ Adjacent Sibling Selector giữa div và p?", opts: ["div ~ p", "div > p", "div + p", "div * p"], ans: 2 },
+      { q: "JavaScript là ngôn ngữ dịch mà nguồn theo kiểu nào?", opts: ["Biên dịch", "Thông dịch", "Cả biên dịch và thông dịch", "Không có dạng nào"], ans: 1 },
+      { q: "Hàm <code>prompt(...)</code> trong JavaScript dùng để làm gì?", opts: ["Hiển thị một thông báo", "Hiển thị một thông báo Yes, No", "Hiển thị thông báo yêu cầu nhập thông tin", "Không phương án nào đúng"], ans: 2 },
+      { q: "Trong JavaScript biểu thức <code>x === y</code> có nghĩa là:", opts: ["Cả x và y đều bằng nhau về giá trị, kiểu và địa chỉ tham chiếu", "Cả hai chỉ bằng nhau về giá trị", "Cả hai đều bằng nhau về giá trị và kiểu dữ liệu", "Cả hai đều không giống nhau chút nào"], ans: 2 },
+      { q: "Trong JavaScript sự kiện Onblur thực hiện khi nào?", opts: ["Khi một đối tượng trong form nhận focus", "Khi một đối tượng trong form mất focus", "Khi di chuyển con chuột qua form", "Khi di chuyển chuột vào nút lệnh"], ans: 1 },
+      { q: "Cách khai báo mảng nào trong JavaScript là đúng?", opts: ['var colors = 1 = ("red"), 2 = ("green"), 3 = ("blue")', 'var colors = ["red", "green", "blue"]', 'var colors = {1:"red", 2:"green", 3:"blue"}', 'var colors = "red", "green", "blue"'], ans: 1 },
+      { q: 'Để kiểm tra nếu biến "i" không bằng 5, câu lệnh nào là đúng?', opts: ["if (i <> 5)", "if i <> 5", "if (i != 5)", "if i ! 5 then"], ans: 2 },
+      { q: 'Hàm nào trong JavaScript được sử dụng để chọn tất cả các đối tượng có class="selector"?', opts: ["querySelector()", "querySelectorAll()", "getElementByClass()", "Cả a, b, c đều sai"], ans: 1 },
+      { q: "Form có name=frm, để lấy giá trị phần tử trong form có name=n ra biến x, mã JavaScript là:", opts: ["x = document.frm.n.value;", "x = document.frm.n.value();", "x = document.getElementByName('n');", "x = document.getElementsByName('n').value;"], ans: 0 },
+      { q: 'Tìm phần tử đầu tiên &lt;p&gt; và thay đổi giá trị thành "Hello", mã JavaScript là:', opts: ["document.getElementsByTagName('p')[0].innerHTML = 'Hello';", "document.getElementsByTagName('p')[0].innerHTML = \"Hello\";", "document.getElementsByTagName('p')[1].innerHTML = 'Hello';", "document.getElementsTagName('p')[0].innerText = 'Hello';"], ans: 0 },
+      { q: "Để lấy giá trị tên thuộc tính đầu tiên của Button thứ 2 ra biến a, mã JavaScript là:", opts: ['a = document.getElementsByTagName("BUTTON")[0].attributes[0].name;', 'a = document.getElementsByTagName("BUTTON")[1].attributes[0].name;', 'a = document.getElementsByName("BUTTON")[0].attributes[0].name;', 'a = document.getElementsByName("BUTTON")[0].attributes[1].name;'], ans: 1 },
+      { q: "Để đổi màu chữ của phần tử có name=n thành red, mã JavaScript là:", opts: ["document.getElementsByName('n').color = 'red';", "document.getElementsByName('n').add.color = 'red';", "document.getElementsByName('n')[0].style.color = 'red';", "document.getElementsByName('n').css.color = 'red';"], ans: 2 },
+      { q: "Để ẩn phần tử có id=txt, mã JavaScript là:", opts: ["document.getElementById('txt').display = 'none';", "document.getElementById('txt').css.display = 'none';", "document.getElementById('txt').style.display = 'none';", "document.getElementById('txt').style.display = 'hide';"], ans: 2 },
+      { q: "Để đổi kích thước chữ của phần tử có id=txt thành 60px, mã JavaScript là:", opts: ["document.getElementById('txt').css.fontSize = '60px';", "document.getElementById('txt').style.fontSize = '60px';", "document.getElementById('txt').style.Style = '60px';", "document.getElementById('txt').fontSize = '60px';"], ans: 1 },
+      { q: "Cho mảng <code>arr = ['aa','bb','cc','dd'];</code> để xoá 'bb' và 'cc', mã JavaScript là:", opts: ["arr.splice(1,1);", "arr.splice(1,3);", "arr.splice(2,3);", "arr.splice(1,2);"], ans: 3 },
+      { q: "Để xoá phần tử thứ 2 có class là class1 bằng jQuery:", opts: ["$('.class1')[0].remove();", "$('#class1')[0].remove();", "$('.class1')[1].remove();", "$('#class1')[1].remove();"], ans: 2 }
+    ]
+  },
+  {
+    title: "Đề 3",
+    year: "",
+    icon: "🧠",
+    questions: [
+      { q: "Giá trị mặc định của thuộc tính float trong CSS là gì?", opts: ["let", "right", "none", "inherit"], ans: 2 },
+      { q: "Khi một phần tử con được float, phần tử cha của nó sẽ:", opts: ["Tự động điều chỉnh chiều cao để bao gồm phần tử con float", "Không bao gồm phần tử con float trong chiều cao của nó", "Trở thành vị trí tương đối", "Trở thành vị trí tuyệt đối"], ans: 1 },
+      { q: "Thuộc tính nào được sử dụng để thay đổi khoảng cách giữa các ký tự trong CSS?", opts: ["letter-spacing", "character-spacing", "text-spacing", "word-spacing"], ans: 0 },
+      { q: "Thuộc tính CSS nào có thể thiết lập một phần tử cố định ở góc dưới cùng bên phải của cửa sổ?", opts: ["position: fixed; bottom: 0; right: 0;", "position: absolute; bottom: 0; right: 0;", "position: static; bottom: 0; right: 0;", "position: relative; bottom: 0; right: 0;"], ans: 0 },
+      { q: "Thuộc tính CSS nào được sử dụng để ẩn một phần tử?", opts: ["display: none;", "display: hidden;", "visibility: hidden;", "visibility: none;"], ans: 0 },
+      { q: 'Selector nào chọn tất cả các phần tử có class là "example"?', opts: ["*example", "#example", "example", ".example"], ans: 3 },
+      { q: "Selector nào chọn tất cả các phần tử &lt;p&gt; mà là phần tử đầu tiên con của phần tử cha?", opts: ["p:first-child", "p:first-of-type", "p:only-child", "p:last-child"], ans: 0 },
+      { q: "Selector nào để chọn phần tử &lt;li&gt; ở vị trí lẻ trong một danh sách?", opts: ["li:nth-child(even)", "li:nth-of-type(odd)", "li:nth-child(odd)", "li:odd-child"], ans: 2 },
+      { q: "Khi một phần tử có <code>position: fixed;</code>, phần tử đó sẽ:", opts: ["Di chuyển cùng với trang khi cuộn.", "Vẫn luôn ở cùng vị trí trong cửa sổ trình duyệt khi cuộn trang.", "Được đặt tương đối so với phần tử con gần nhất có thuộc tính position.", "Được đặt tương đối so với phần tử cha gần nhất."], ans: 1 },
+      { q: "Để ngăn chặn các phần tử bị bao quanh một phần tử đã được float, ta sử dụng thuộc tính nào?", opts: ["clear", "float", "overflow", "display"], ans: 0 },
+      { q: "Responsive Web Design (RWD) là gì?", opts: ["Một kỹ thuật lập trình chỉ áp dụng cho máy tính cá nhân", "Một phương pháp thiết kế web để tạo ra trang web hiển thị tốt trên nhiều thiết bị và kích thước màn hình khác nhau", "Một loại kiến trúc mạng để tăng tốc độ tải trang web", "Một loại hình quảng cáo trên mạng Internet"], ans: 1 },
+      { q: "Câu lệnh @media nào áp dụng các quy tắc CSS khi chiều rộng của thiết bị nhỏ hơn hoặc bằng 600px?", opts: ["@media screen and (max-width: 600px) { ... }", "@media screen and (min-width: 600px) { ... }", "@media screen and (max-height: 600px) { ... }", "@media screen and (min-height: 600px) { ... }"], ans: 0 },
+      { q: "Media query nào áp dụng CSS khi chiều cao cửa sổ ít nhất 400px và chiều rộng nhỏ hơn hoặc bằng 600px?", opts: ["@media screen and (min-height: 400px) and (max-width: 600px) { ... }", "@media screen and (height: 400px) and (width: 600px) { ... }", "@media screen and (min-height: 400px) and (width: 600px) { ... }", "@media screen and (height: 400px) and (max-width: 600px) { ... }"], ans: 0 },
+      { q: "Thuộc tính CSS nào xác định tỷ lệ mà một phần tử con sẽ mở rộng trong container Flexbox?", opts: ["flex-grow", "flex-shrink", "flex-basis", "flex"], ans: 0 },
+      { q: "Thuộc tính flex-shrink được sử dụng để xác định điều gì về phần tử con trong container Flexbox?", opts: ["Tỷ lệ mở rộng", "Tỷ lệ co lại", "Tỷ lệ không gian trống", "Tỷ lệ phân trăm"], ans: 1 },
+      { q: "Trong JavaScript, từ khóa nào khai báo một biến không thể thay đổi giá trị sau khi đã được gán?", opts: ["let", "var", "const", "static"], ans: 2 },
+      { q: 'Kết quả của biểu thức <code>2 + "2"</code> trong JavaScript là gì?', opts: ["4", '"22"', "NaN", "undefined"], ans: 1 },
+      { q: 'Kết quả biến x là gì? <code>var x = parseInt("12.5A") + parseFloat("12.4A");</code>', opts: ["24.9", "24.5", "24.9 (trùng a)", '"125124"'], ans: 1 },
+      { q: "Đoạn mã nào có nhiệm vụ tạo đối tượng trong JavaScript?", opts: ["const dog = {};", "const dog = new Object();", "const dog = Object.create({});", "Tất cả đều đúng"], ans: 3 },
+      { q: "Trong JavaScript, biểu thức <code>x === y</code> có nghĩa là:", opts: ["Cả hai chỉ bằng nhau về giá trị, kiểu và địa chỉ tham chiếu.", "Cả hai chỉ bằng nhau về giá trị.", "Cả hai đều bằng nhau về giá trị và kiểu dữ liệu.", "Cả hai đều không giống nhau chút nào."], ans: 2 },
+      { q: 'Lệnh <code>x = 10; x2 = "5"; alert(s1 * s2);</code> kết quả trên hộp thoại alert là:', opts: ["10*5", "50", "Lỗi", "Tất cả đều sai"], ans: 2 },
+      { q: 'Cho đoạn mã: <code>var s = " Đại học Công Nghệ Sài Gòn "; s = s.trim(); var kq = s.split(" ");</code> Kết quả kq[2]?', opts: ["Đại", "Nghệ", "Công", "Sài"], ans: 2 },
+      { q: "Kết quả của đoạn mã: <code>let person1 = {name: 'An'}; let person2 = person1; person2.name = 'Bình'; console.log(person1.name);</code>", opts: ["'An'", "'Bình'", "undefined", "error"], ans: 1 },
+      { q: "Kết quả: <code>var array = [10, 20, 30, 40, 50]; var part = array.slice(1, 4); console.log(part);</code>", opts: ["[10, 20, 30, 40, 50]", "[20, 30, 40]", "[30, 40, 50]", "[20, 30, 40, 50]"], ans: 1 },
+      { q: "Thứ Tư ngày 19/6/2024, kết quả hộp thoại sau lệnh <code>let d = new Date(); alert(d.getDay());</code>?", opts: ["4", "3", "Wed", "19"], ans: 1 },
+      { q: "Câu lệnh nào để thay đổi nội dung thẻ div thành \"abc\": <code>&lt;div id=\"id1\"&gt;&lt;/div&gt;</code>", opts: ["document.getElementById('id1').innerHTML=\"abc\";", "document.getElementsById('id1').innerHTML=\"abc\";", "document.getElementByTagName('div').innerHTML=\"abc\";", "document.getElementByTagName('div').innerHTML=\"abc\";"], ans: 0 },
+      { q: "Để xóa toàn bộ nội dung trang web, dùng lệnh JavaScript nào?", opts: ['document.body.innerHTML="";', "document.getElementsByTagName('body')[0].innerHTML=\"\";", "Cả hai a, b đều sai", "Cả hai a, b đều đúng"], ans: 0 },
+      { q: "Thay đổi thẻ div#id1 sử dụng class c2 là:", opts: ["document.getElementById('id1').className='c2'", "document.getElementById('id1')='c2'", "document.getElementById('#id1').className ='c2'", "document.getElementById('id1').class ='c2'"], ans: 0 },
+      { q: "Để đếm xem trong trang web có bao nhiêu form ta sử dụng lệnh nào?", opts: ["n = document.form.length;", "n = document.forms.length();", "n = document.forms.length;", "n = document.form.length();"], ans: 2 },
+      { q: "Câu lệnh JavaScript để quay về trang trước trong history của trình duyệt:", opts: ['<button onclick="history.back()">Go Back</button>', '<button onclick="history.go(-1)">Go Back 2 Pages</button>', '<button onclick="history.go.back()">Go Back 2 Pages</button>', "Cả a,b đúng"], ans: 3 },
+      { q: "jQuery là:", opts: ["Thư viện javascript giúp viết mã javascript nhanh gọn hơn", "Một đối tượng của javascript", "Một dạng framework", "Một phần mềm lập trình javascript"], ans: 0 },
+      { q: "Phương thức jquery nào lấy (trả về) nội dung văn bản của tất cả các phần tử đã chọn:", opts: ["html();", "attr();", "val();", "text()"], ans: 3 },
+      { q: 'Câu lệnh jQuery tương đương với: <code>document.getElementById(\'id1\').innerHTML=10;</code>', opts: ["$(\"id1\").html(10);", "$(\"#id1\").html(10);", "$(\"id1\").innerHTML=10;", "$(\"#id1\").htmlHTML=10;"], ans: 1 },
+      { q: "Trong jQuery, để ẩn các thẻ p, sử dụng lệnh:", opts: ['$("<p>").hide();', '$("p").display("none");', '$("p").display("hide");', '$("p").hide();'], ans: 3 },
+      { q: "Để xóa phần tử có class là class1 bằng jQuery:", opts: ['$(".class1")[0].remove();', "$(#class1)[0].remove();", '$("#class1")[1].remove();', '$("class1")[1].remove();'], ans: 0 },
+      { q: "Khi truy cập bằng smartphone, trang có nhiều media query, màu nền sẽ là gì? (max-width:768px: red; max-width:768px: green; min-width:992px: blue; min-width:1200px: yellow)", opts: ["Red", "Green", "Blue", "Yellow"], ans: 1 },
+      { q: "Figma là:", opts: ["Công cụ lập trình web", "Công cụ thiết kế web", "Framework CSS", "Thư viện javascript"], ans: 1 },
+      { q: "Khi sử dụng emmet trong VS Code để viết html, lệnh nào tạo bảng id=id1 có 3 dòng, mỗi dòng 2 cột, mỗi ô 5 từ:", opts: ["table>#id1>tr*3>td*2>lorem5", "table>#id1>tr*3>td*2*lorem*5", "table#id1>tr*3>td*2>lorem*5", "table#id1>tr*3>td*5>lorem5"], ans: 2 },
+      { q: "Lệnh emmet để sinh mã html: &lt;div id=\"container\"&gt;&lt;div id=\"head\" class=\"c1\"&gt;&lt;/div&gt;&lt;div id=\"content\" class=\"c2\"&gt;&lt;/div&gt;&lt;/div&gt;", opts: ["#container>#head.c1+#content.c2", "#container>#head.c1>#content.c2", "#container>(head.c1+content.c2)", "container>(head.c1+content.c2)"], ans: 0 },
+      { q: "AngularJS, ReactJS, và VueJS là:", opts: ["Các thư viện/framework phổ biến để phát ứng dụng web fullstack", "Các thư viện/framework phổ biến phát triển web backend", "Các thư viện/framework phổ biến để phát triển giao diện người dùng trong ứng dụng web.", "Tất cả các câu trên là đúng"], ans: 2 }
+    ]
+  },
+  {
+    title: "Đề 4",
+    year: "",
+    icon: "🎯",
+    questions: [
+      { q: "Thuộc tính nào được sử dụng để thay đổi kích thước chữ trong CSS?", opts: ["font-size", "text-size", "size", "text-font"], ans: 0 },
+      { q: "Selector nào được sử dụng để chọn phần tử &lt;a&gt; khi người dùng click vào nó?", opts: ["a:focus", "a:active", "a:hover", "a:visited"], ans: 1 },
+      { q: "Khi sử dụng float trên một phần tử, phần tử này sẽ:", opts: ["Thay đổi vị trí của phần tử cha", "Bị kéo ra khỏi luồng bình thường của tài liệu", "Ảnh hưởng đến tất cả các phần tử anh em bên ngoài container", "Không ảnh hưởng đến các phần tử khác"], ans: 1 },
+      { q: "Thuộc tính CSS nào có thể thiết lập một phần tử cố định ở góc dưới cùng bên phải của cửa sổ?", opts: ["position: relative; bottom: 0; right: 0;", "position: absolute; bottom: 0; right: 0;", "position: fixed; bottom: 0; right: 0;", "position: static; bottom: 0; right: 0;"], ans: 2 },
+      { q: "Thuộc tính CSS nào được sử dụng để trình bày các phần tử nằm cùng nhau trên một hàng?", opts: ["display: block;", "display: inline;", "visibility: hidden;", "display: none;"], ans: 1 },
+      { q: "Selector nào chỉ chọn phần tử p chứa class \"example\"?", opts: ["p:example", ".p.example", "p.example", "p^example"], ans: 2 },
+      { q: "Selector nào chọn phần tử &lt;p&gt; là phần tử con thứ 2 của phần tử cha tính từ cuối cùng?", opts: [":nth-last-child(2)", "p: nth-child(2)", "p:nth-child(2)", "p:nth-last-child(2)"], ans: 3 },
+      { q: "Selector nào chọn tất cả các phần tử &lt;p&gt; là anh em liền kề của một phần tử &lt;p&gt;?", opts: ["p + p", "p ~ p", "p, p", "p p"], ans: 0 },
+      { q: "Giá trị thuộc tính nào được đặt mặc định cho các phần tử html và không bị ảnh hưởng bởi top, bottom, left, right?", opts: ["position: static;", "position: relative;", "position: fixed;", "position: absolute;"], ans: 0 },
+      { q: "Phần nội dung footer thường sử dụng thuộc tính nào để ngăn chặn các phần tử khác ảnh hưởng đến nó?", opts: ["float: auto;", "clear: auto;", "overflow: hidden;", "clear: both;"], ans: 3 },
+      { q: "Trong CSS, thuộc tính \"min-width\" được sử dụng để làm gì trong Responsive Web Design?", opts: ["Xác định chiều rộng tối đa cho một phần tử", "Xác định chiều cao tối đa cho một phần tử", "Xác định chiều rộng tối thiểu cho một phần tử", "Xác định chiều cao tối thiểu cho một phần tử"], ans: 2 },
+      { q: "Media query nào áp dụng các quy tắc CSS chỉ khi thiết bị là máy in?", opts: ["@media print {...}", "@media printer {...}", "@media screen and (device: print) {...}", "@media screen and (type: print) {...}"], ans: 0 },
+      { q: "Media query nào áp dụng CSS khi chiều cao cửa sổ ít nhất 400px và chiều rộng ít nhất 600px?", opts: ["@media screen and (min-height: 400px) and (max-width: 600px) {...}", "@media screen and (height: 400px) and (width: 600px) {...}", "@media screen and (min-height: 400px) and (min-width: 600px) {...}", "@media screen and (height: 400px) and (max-width: 600px) {...}"], ans: 2 },
+      { q: "Thuộc tính CSS nào xác định tỷ lệ mà một phần tử con sẽ co lại trong container Flexbox?", opts: ["flex-grow", "flex-basis", "flex-shrink", "flex"], ans: 2 },
+      { q: "Thuộc tính flex-basis được sử dụng để xác định điều gì về phần tử con trong container Flexbox?", opts: ["Tỷ lệ mở rộng", "Tỷ lệ co lại", "Chỉ định độ dài ban đầu", "Chỉ định độ cao ban đầu"], ans: 2 },
+      { q: "Trong JavaScript, từ khóa nào khai báo một biến không thể thay đổi giá trị sau khi đã được gán?", opts: ["let", "var", "const", "undefined"], ans: 2 },
+      { q: 'Kết quả của biểu thức <code>4 + "4"</code> trong JavaScript là gì?', opts: ['"44"', "8", "NaN", "undefined"], ans: 0 },
+      { q: 'Kết quả biến s là gì? <code>var s = parseInt("1.7A") + parseFloat("2.5A");</code>', opts: ["3.2", "3.5", '"1725"', "2.7"], ans: 1 },
+      { q: "Đoạn mã nào có nhiệm vụ tạo đối tượng trong JavaScript?", opts: ["conto dog = {};", "conto dog = new Object();", "conto dog = Object.create({});", "Tất cả đều đúng"], ans: 3 },
+      { q: "Trong JavaScript, biểu thức <code>x = y</code> có nghĩa là:", opts: ["Gán giá trị y cho x.", "Cả hai chỉ bằng nhau về giá trị.", "Cả hai đều bằng nhau về giá trị và kiểu dữ liệu.", "Cả hai bằng nhau về địa chỉ tham chiếu."], ans: 0 },
+      { q: 'Lệnh: <code>a! = "10"; s2 = 5; alert(a! + s2);</code> Kết quả trên hộp thoại Alert là:', opts: ["15", '"10"5', "105", '"55"'], ans: 2 },
+      { q: 'Cho đoạn mã: <code>var kq = "Đại học Công Nghệ Sài Gòn"; var kq_ = kq.split(" ");</code> Kết quả kq[4]?', opts: ["Đại", "Nghệ", "Gòn", "Sài"], ans: 3 },
+      { q: "Kết quả: <code>var array = [10, 20, 30, 40, 50]; var newArray = array.slice(1, 4); console.log(newArray);</code>", opts: ["[20, 30, 40]", "[50, 40, 50]", "[20, 30, 40, 50]", "[10, 20, 30, 40]"], ans: 0 },
+      { q: "Kết quả của đoạn mã: <code>let person = {name: \"An\", age:30}; Object.keys(person).forEach(key => { console.log(key); });</code>", opts: ["age", "Name", "An 30", "'name age'"], ans: 3 },
+      { q: "Thứ Sáu ngày 21/6/2024, kết quả hộp thoại sau lệnh <code>new Date().getDay();</code>?", opts: ["21", "Fri", "0", "5"], ans: 3 },
+      { q: "Để đếm xem trong trang web có bao nhiêu form ta sử dụng lệnh nào?", opts: ["n = document.form.length;", "n = document.form.length();", "n = document.forms.length;", "n = document.forms.length();"], ans: 2 },
+      { q: 'Câu lệnh nào để nhập nội dung thẻ div thành "abc": <code>&lt;div id="id1"&gt;&lt;/div&gt;</code>', opts: ["document.getElementById('id1').innerHTML = \"abc\";", "document.getElementsByTagName('div').innerHTML = \"abc\";", "document.getElementsByTagName('div').innerHTML = \"abc\";", "document.getElementById('id1').innerText = \"abc\";"], ans: 0 },
+      { q: "Để xóa toàn bộ nội dung trang web, dùng lệnh JavaScript nào?", opts: ['document.body.innerHTML = "";', "document.getElementsByTagName('body')[0].innerHTML = \"\";", "Cả hai a, b đều sai", "Cả hai a, b đều đúng"], ans: 3 },
+      { q: "Để chuyển trang web tới https://www.google.com.vn/, sử dụng lệnh:", opts: ['URL.location = "https://www.google.com.vn/"', 'window.URL.location="https://www.google.com/"', 'window.location="https://www.google.com.vn/"', 'window.location="https://www.google.com."'], ans: 2 },
+      { q: "Để thay đổi màu chữ của phần tử có name n thành 'red' là:", opts: ["document.getElementsByName('n').color = 'red';", "document.getElementsByName('n').add.color = 'red';", "document.getElementsByName('n').style.color = 'red';", "document.getElementsByName('n').css.color = 'red';"], ans: 2 },
+      { q: "jQuery là:", opts: ["Một đối tượng của javascript", "Thư viện javascript giúp viết mã javascript nhanh gọn hơn", "Một phần mềm lập trình javascript", "Một dạng framework"], ans: 1 },
+      { q: "Trong jQuery, để ẩn các thẻ p, sử dụng lệnh:", opts: ["$('p').display(\"hide\")", "$('p').display(\"none\")", "$('p').hide()", "$('p').hide();"], ans: 3 },
+      { q: "Phương thức jQuery nào lấy (trả về) nội dung văn bản của tất cả các phần tử đã chọn:", opts: ["html()", "val();", "text()", "attr();"], ans: 2 },
+      { q: "Để xóa phần tử thứ 2 có class là class1 bằng jQuery là:", opts: ["$('class1')[0].remove();", "$('class1')[1].remove();", "$('class1').remove();", "$('class1')[1].remove();"], ans: 3 },
+      { q: "Câu lệnh jQuery tương đương với: <code>document.getElementById(\"id1\").textContent = 10;</code>", opts: ['$("#id1").text(10);', '$("#id1").text(10); (b)', '$("#id1").textContent = 10;', '$("#id1").textContent = 10; (d)'], ans: 0 },
+      { q: "AngularJS, ReactJS, và VueJS là:", opts: ["Các thư viện/framework phổ biến để phát triển giao diện người dùng trong ứng dụng web.", "Các thư viện/framework phổ biến phát triển web backend", "Các thư viện/framework phổ biến để phát triển ứng dụng web fullstack", "Tất cả các câu trên là đúng"], ans: 0 },
+      { q: "Figma là:", opts: ["Công cụ lập trình web", "Framework CSS", "Công cụ thiết kế web", "Thư viện javascript"], ans: 2 },
+      { q: "Lệnh emmet để sinh ra mã html có &lt;div id=\"container\"&gt; chứa head.c1 và body > div.content:", opts: ["#container>#head.c1>#content.c2", "#container>head.c1+content.c2", "#container>(head.c1+content.c2)", "container>(head.c1+content.c2)"], ans: 2 },
+      { q: "Khi truy cập bằng smartphone, màu nền sẽ là gì? (max-width:600px: yellow; min-width:601px: green; min-width:992px: blue; min-width:1200px: red)", opts: ["Red", "Green", "Blue", "Yellow"], ans: 3 },
+      { q: "Khi sử dụng emmet trong VS Code, lệnh nào tạo bảng id=id1 có 3 dòng, mỗi dòng 2 cột, mỗi ô 5 từ?", opts: ["table#id1>tr*3>td*2>lorem*5", "table#id1>tr*3>td*2>lorem*5 (b)", "table#id1>tr*3>td*2>lorem5", "table#id1>tr*3>td*2>lorem5 (d)"], ans: 0 }
+    ]
+  }
+];
+
+const LABELS = ['A', 'B', 'C', 'D', 'E'];
+let currentExam = 0;
+let currentQ = 0;
+let score = 0;
+let answered = [];
+let hintUsed = [];
+let selectedAnswer = null;
+
+function goHome() {
+  document.getElementById('home').style.display = 'flex';
+  document.getElementById('quiz').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+}
+
+function startExam(idx) {
+  currentExam = idx;
+  currentQ = 0;
+  score = 0;
+  answered = new Array(EXAMS[idx].questions.length).fill(null);
+  hintUsed = new Array(EXAMS[idx].questions.length).fill(false);
+  selectedAnswer = null;
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('quiz').style.display = 'block';
+  document.getElementById('quizTitle').textContent = EXAMS[idx].title + (EXAMS[idx].year ? ' (' + EXAMS[idx].year + ')' : '');
+  renderQuestion();
+}
+
+function restart() {
+  startExam(currentExam);
+}
+
+function renderQuestion() {
+  const exam = EXAMS[currentExam];
+  const total = exam.questions.length;
+  const q = exam.questions[currentQ];
+  document.getElementById('quizMeta').textContent = `Câu ${currentQ + 1} / ${total}`;
+  document.getElementById('progressFill').style.width = ((currentQ / total) * 100) + '%';
+
+  const wasDone = answered[currentQ] !== null;
+  const wasHint = hintUsed[currentQ];
+
+  let optsHtml = '';
+  q.opts.forEach((opt, i) => {
+    let cls = 'option';
+    if (wasDone) {
+      cls += ' disabled';
+      if (i === q.ans) cls += ' correct';
+      else if (i === answered[currentQ] && i !== q.ans) cls += ' wrong';
+    } else if (wasHint && i === q.ans) {
+      cls += ' hint-correct';
+    } else if (selectedAnswer === i) {
+      cls += ' selected';
+    }
+    optsHtml += `<div class="${cls}" onclick="selectOpt(${i})">
+      <span class="opt-label">${LABELS[i]}</span>
+      <span class="opt-text">${opt}</span>
+    </div>`;
+  });
+
+  let feedbackHtml = '';
+  if (wasDone) {
+    if (answered[currentQ] === q.ans) {
+      feedbackHtml = '<div class="feedback correct-msg">✅ Chính xác!</div>';
+    } else {
+      feedbackHtml = `<div class="feedback wrong-msg">❌ Sai! Đáp án đúng: <b>${LABELS[q.ans]}. ${q.opts[q.ans]}</b></div>`;
+    }
+  }
+
+  document.getElementById('questionContainer').innerHTML = `
+    <div class="question-card">
+      <div class="question-num">Câu ${currentQ + 1}</div>
+      <div class="question-text">${q.q}</div>
+      <div class="options">${optsHtml}</div>
+      ${feedbackHtml}
+      <div class="card-actions">
+        ${!wasDone ? `<button class="btn btn-hint" onclick="showHint()" ${wasHint ? 'disabled style="opacity:0.5"' : ''}>💡 Gợi ý</button>` : ''}
+        <button class="btn btn-next" id="nextBtn" onclick="nextQuestion()" ${(!wasDone && selectedAnswer === null) ? 'disabled' : ''}>
+          ${currentQ < EXAMS[currentExam].questions.length - 1 ? 'Câu tiếp →' : 'Xem kết quả 🏁'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function selectOpt(i) {
+  if (answered[currentQ] !== null) return;
+  selectedAnswer = i;
+  renderQuestion();
+  // confirm answer
+  answered[currentQ] = i;
+  const exam = EXAMS[currentExam];
+  if (i === exam.questions[currentQ].ans) score++;
+  renderQuestion();
+}
+
+function showHint() {
+  if (answered[currentQ] !== null) return;
+  hintUsed[currentQ] = true;
+  selectedAnswer = null;
+  renderQuestion();
+}
+
+function nextQuestion() {
+  if (answered[currentQ] === null && selectedAnswer === null) return;
+  const exam = EXAMS[currentExam];
+  if (currentQ < exam.questions.length - 1) {
+    currentQ++;
+    selectedAnswer = answered[currentQ] !== null ? answered[currentQ] : null;
+    renderQuestion();
+  } else {
+    showResult();
+  }
+}
+
+function showResult() {
+  document.getElementById('quiz').style.display = 'none';
+  document.getElementById('result').style.display = 'block';
+  const total = EXAMS[currentExam].questions.length;
+  const pct = Math.round((score / total) * 100);
+  document.getElementById('resScore').textContent = pct + '%';
+  const correct = score;
+  const wrong = total - score;
+  document.getElementById('resCorrect').textContent = correct;
+  document.getElementById('resWrong').textContent = wrong;
+  document.getElementById('resTotal').textContent = total;
+  let title, sub;
+  if (pct >= 90) { title = '🏆 Xuất sắc!'; sub = 'Bạn nắm rất vững kiến thức!'; }
+  else if (pct >= 70) { title = '🎉 Tốt lắm!'; sub = 'Kết quả khá ổn, hãy ôn thêm phần sai!'; }
+  else if (pct >= 50) { title = '📖 Cần cố gắng hơn'; sub = 'Ôn lại các phần còn yếu nhé!'; }
+  else { title = '💪 Cần luyện tập thêm'; sub = 'Đừng nản, thử lại và ôn kỹ hơn!'; }
+  document.getElementById('resTitle').textContent = title;
+  document.getElementById('resSub').textContent = sub;
+}
+
+// Build home cards
+const grid = document.getElementById('examGrid');
+EXAMS.forEach((e, i) => {
+  const card = document.createElement('div');
+  card.className = 'exam-card';
+  card.innerHTML = `<div class="icon">${e.icon}</div><h2>${e.title}</h2><span>${e.questions.length} câu hỏi${e.year ? ' · ' + e.year : ''}</span>`;
+  card.onclick = () => startExam(i);
+  grid.appendChild(card);
+});
+</script>
+</body>
+</html>
